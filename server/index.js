@@ -21,7 +21,6 @@ app.use(async (req, res, next) => {
   next();
 });
 
-// Маршруты для получения заголовков, текста статьи и модификации текста
 app.get('/headlines', getHeadlines);
 app.post('/article', getArticleText);
 app.post('/modify-text', modifyText);
@@ -30,19 +29,25 @@ app.post('/modify-text', modifyText);
 app.post('/save-text-file', async (req, res) => {
   const { title, content } = req.body;
 
-  // Проверка на наличие необходимых данных
   if (!title || !content) {
+    console.log('Ошибка: Недостаточно данных для сохранения файла');
     return res.status(400).json({ error: 'Недостаточно данных для сохранения файла' });
   }
 
   try {
+    // Формируем имя подкаталога на основе текущей даты (например, 2025_03_23)
+    const currentDate = new Date().toISOString().split('T')[0].replace(/-/g, '_'); // 2025_03_23
+    const baseDir = 'C:\\projects\\news-downloads'; // Базовая папка
+    const dateDir = path.join(baseDir, currentDate); // Папка с датой: C:\projects\news-downloads\2025_03_23
+
     // Очищаем название файла от недопустимых символов и ограничиваем длину
     const sanitizedTitle = title.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 50);
     let fileName = `${sanitizedTitle}.txt`;
-    let filePath = path.join(__dirname, 'saved_files', fileName);
+    let filePath = path.join(dateDir, fileName); // Полный путь: C:\projects\news-downloads\2025_03_23\EthereumWhalesDropMillionsonETH.txt
 
-    // Создаём директорию saved_files, если она не существует
-    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    // Создаём базовую директорию и подкаталог, если они не существуют
+    console.log(`Создаём директорию: ${dateDir}`);
+    await fs.mkdir(dateDir, { recursive: true });
 
     // Проверяем, существует ли файл, и добавляем суффикс при необходимости
     let counter = 1;
@@ -51,7 +56,7 @@ app.post('/save-text-file', async (req, res) => {
         await fs.access(filePath); // Проверяем, существует ли файл
         // Если файл существует, добавляем суффикс (_1, _2 и т.д.) и пробуем снова
         fileName = `${sanitizedTitle}_${counter}.txt`;
-        filePath = path.join(__dirname, 'saved_files', fileName);
+        filePath = path.join(dateDir, fileName);
         counter++;
       } catch (error) {
         // Если файл не существует, выходим из цикла
@@ -59,10 +64,11 @@ app.post('/save-text-file', async (req, res) => {
       }
     }
 
-    // Сохраняем файл с уникальным именем
+    // Сохраняем файл
+    console.log(`Сохраняем файл по пути: ${filePath}`);
     await fs.writeFile(filePath, content, 'utf8');
+    console.log(`Файл успешно сохранён: ${filePath}`);
 
-    // Возвращаем успешный ответ с путём к файлу
     res.json({ status: 'success', path: filePath });
   } catch (error) {
     console.error('Ошибка при сохранении файла:', error);
@@ -70,7 +76,6 @@ app.post('/save-text-file', async (req, res) => {
   }
 });
 
-// Запуск сервера
 app.listen(port, () => {
   console.log(`Сервер запущен на порту ${port}`);
 });
